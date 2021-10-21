@@ -123,42 +123,6 @@ pub fn reflect(i: &Vec2f, n: &Vec2f) -> Vec2f {
     i - &(&(n * 2.0) * (i.dot(n)))
 }
 
-pub trait Object {
-    // returns tuple (b, dist)
-    // b is true if ray from orig in direction of vector dir intersects with this object
-    // dist is the distance along the ray that the first intersection occurs
-    fn ray_intersect(&self, orig: &Vec3f, dir: &Vec3f) -> (bool, f32);
-}
-
-pub struct Sphere {
-    center: Vec3f,
-    radius: f32,
-}
-
-impl Sphere {
-    pub fn new(c: Vec3f, r: f32) -> Self {
-        Sphere { center: c, radius: r }
-    }
-}
-
-impl Object for Sphere {
-    fn ray_intersect(&self, orig: &Vec3f, dir: &Vec3f) -> (bool, f32) {
-        let l = &self.center - orig;
-        let tca = &l.dot(dir);
-        let d2 = l.dot(&l) - (tca * tca);
-        if d2 > (self.radius * self.radius) { return (false, 0f32); }
-
-        let thc = (self.radius * self.radius - d2).sqrt();
-
-        let mut t0 = tca - thc;
-        let t1 = tca + thc;
-
-        if t0 < 0f32 { t0 = t1; }
-
-        return (!(t0 < 0.0), t0);
-    }
-}
-
 // sloppy but it works
 pub fn max(a: f32, b: f32) -> f32 {
     if a > b { a } else { b }
