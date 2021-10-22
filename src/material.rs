@@ -4,6 +4,7 @@ pub struct Material {
     base_color: Vec3f,
 }
 
+
 impl Material {
     pub fn new(base_color: &Vec3f) -> Self {
         Material { base_color: base_color.clone() }
@@ -14,5 +15,13 @@ impl Material {
     }
 }
 
-pub(crate) static IVORY: Material = Material::new(&Vec3f::from_slice(&[0.4f32, 0.4f32, 0.3f32]));
-pub(crate) static RUBBER: Material = Material::new(&Vec3f::from_slice(&[0.3f32, 0.1f32, 0.1f32]));
+impl Clone for Material {
+    fn clone(&self) -> Self {
+        Material::new(&self.base_color.clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.base_color = source.base_color.clone();
+    }
+}
+

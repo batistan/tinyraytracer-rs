@@ -23,7 +23,7 @@ impl<T> vec<T>
         vec { _data: data }
     }
 
-    pub fn from_slice(values: &[T]) -> Self {
+    pub fn from(values: &[T]) -> Self {
         let data = Vec::from(values);
 
         vec { _data: data }
@@ -40,6 +40,11 @@ impl<T> vec<T>
 }
 
 impl vec<f32> {
+
+    pub fn new3f(x: f32, y: f32, z: f32) -> Self {
+        vec { _data: vec![x, y, z] }
+    }
+
     pub fn norm(&self) -> f32 {
         self._data.iter()
             .map(|v| v * v)
