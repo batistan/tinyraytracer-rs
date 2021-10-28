@@ -38,7 +38,6 @@ impl<T> VecRT<T>
 }
 
 impl VecRT<f32> {
-
     pub fn new3f(x: f32, y: f32, z: f32) -> Self {
         VecRT { _data: vec![x, y, z] }
     }
@@ -122,6 +121,7 @@ impl<T> Mul<T> for &VecRT<T>
     }
 }
 
+// TODO what
 pub fn reflect(i: &Vec2f, n: &Vec2f) -> Vec2f {
     i - &(&(n * 2.0) * (i.dot(n)))
 }

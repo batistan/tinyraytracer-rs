@@ -1,14 +1,13 @@
-use crate::geometry::{Vec2f, Vec3f};
+use crate::geometry::Vec3f;
 
 pub struct Material {
     base_color: Vec3f,
-    albedo: Vec2f,
-    specular_exponent: f32
+    albedo: Vec3f,
+    specular_exponent: f32,
 }
 
-
 impl Material {
-    pub fn new(base_color: &Vec3f, albedo: &Vec2f, specular_exponent: f32) -> Self {
+    pub fn new(base_color: &Vec3f, albedo: &Vec3f, specular_exponent: f32) -> Self {
         Material { base_color: base_color.clone(), albedo: albedo.clone(), specular_exponent }
     }
 
@@ -16,7 +15,7 @@ impl Material {
         &self.base_color
     }
 
-    pub fn albedo(&self) -> &Vec2f {
+    pub fn albedo(&self) -> &Vec3f {
         &self.albedo
     }
 
@@ -36,4 +35,3 @@ impl Clone for Material {
         self.specular_exponent = source.specular_exponent;
     }
 }
-

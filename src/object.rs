@@ -10,7 +10,6 @@ pub trait Object {
     fn get_position(&self) -> &Vec3f;
 
     fn get_material(&self) -> &Material;
-
 }
 
 pub struct Sphere {
@@ -50,4 +49,3 @@ impl Object for Sphere {
         &self.material
     }
 }
-
