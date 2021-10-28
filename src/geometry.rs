@@ -5,122 +5,120 @@
 use std::ops::{Add, Index, IndexMut, Mul, Sub};
 
 #[derive(Debug)]
-pub struct vec<T> {
+pub struct VecRT<T> {
     _data: Vec<T>,
 }
 
-pub type Vec2f = vec<f32>;
-pub type Vec3f = vec<f32>;
-pub type Vec3i = vec<i32>;
-pub type Vec4f = vec<f32>;
+pub type Vec2f = VecRT<f32>;
+pub type Vec3f = VecRT<f32>;
 
-impl<T> vec<T>
+impl<T> VecRT<T>
     where T: Clone + Default {
     pub fn new(size: usize) -> Self {
         let mut data = Vec::with_capacity(size);
         data.resize(size, Default::default());
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 
     pub fn from(values: &[T]) -> Self {
         let data = Vec::from(values);
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
-impl<T> vec<T>
+impl<T> VecRT<T>
     where T: Copy + Default + Add<Output=T> + Mul<Output=T> {
-    pub fn dot(&self, rhs: &vec<T>) -> T {
+    pub fn dot(&self, rhs: &VecRT<T>) -> T {
         self._data.iter().zip(rhs._data.iter())
             .map(|(&l, &r)| l * r)
             .fold(Default::default(), |acc, v| acc + v)
     }
 }
 
-impl vec<f32> {
+impl VecRT<f32> {
 
     pub fn new3f(x: f32, y: f32, z: f32) -> Self {
-        vec { _data: vec![x, y, z] }
+        VecRT { _data: vec![x, y, z] }
     }
 
-    pub fn norm(&self) -> f32 {
+    pub fn magnitude(&self) -> f32 {
         self._data.iter()
             .map(|v| v * v)
             .fold(0.0_f32, |acc, v| acc + v)
             .sqrt()
     }
 
-    pub fn normalize(&self) -> vec<f32> {
-        let norm = self.norm();
+    pub fn normalize(&self) -> VecRT<f32> {
+        let mag = self.magnitude();
         let data = self._data.iter()
-            .map(|v| v / norm)
+            .map(|v| v / mag)
             .collect();
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
-impl<T> Clone for vec<T>
+impl<T> Clone for VecRT<T>
     where T: Clone {
     fn clone(&self) -> Self {
         let data = self._data.clone();
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
-impl<T> Index<i32> for vec<T> {
+impl<T> Index<i32> for VecRT<T> {
     type Output = T;
 
     fn index(&self, index: i32) -> &Self::Output {
-        return &self._data[index as usize];
+        &self._data[index as usize]
     }
 }
 
-impl<T> IndexMut<i32> for vec<T> {
+impl<T> IndexMut<i32> for VecRT<T> {
     fn index_mut(&mut self, index: i32) -> &mut Self::Output {
-        return self._data.index_mut(index as usize);
+        self._data.index_mut(index as usize)
     }
 }
 
-impl<T> Sub for &vec<T>
+impl<T> Sub for &VecRT<T>
     where T: Copy + Sub<Output=T> {
-    type Output = vec<T>;
+    type Output = VecRT<T>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         let data = self._data.iter().zip(rhs._data.iter())
             .map(|(&l, &r)| l - r)
             .collect();
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
-impl<T> Add for &vec<T>
+impl<T> Add for &VecRT<T>
     where T: Copy + Add<Output=T> {
-    type Output = vec<T>;
+    type Output = VecRT<T>;
 
     fn add(self, rhs: Self) -> Self::Output {
         let data = self._data.iter().zip(rhs._data.iter())
             .map(|(&l, &r)| l + r)
             .collect();
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
-impl<T> Mul<T> for &vec<T>
+impl<T> Mul<T> for &VecRT<T>
     where T: Copy + Mul<Output=T> {
-    type Output = vec<T>;
+    type Output = VecRT<T>;
 
     fn mul(self, rhs: T) -> Self::Output {
         let data = self._data.iter()
             .map(|&v| v * rhs)
             .collect();
 
-        vec { _data: data }
+        VecRT { _data: data }
     }
 }
 
