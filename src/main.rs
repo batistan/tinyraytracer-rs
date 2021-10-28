@@ -72,9 +72,30 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
         Vec3f::from(&BG_COLOR)
     } else {
         let (diffuse_light_intensity, specular_light_intensity) = lights.iter().fold((0.0, 0.0), |val, light| {
+            let light_vec = light.get_position() - &intersect_info.first_intersect_point;
             // direction of light onto intersection point (position of light source - point of intersect)
             // angle of incidence, i guess you could call it
-            let light_dir = (light.get_position() - &intersect_info.first_intersect_point).normalize();
+            let light_dir = light_vec.normalize();
+            let distance_to_light = light_vec.magnitude();
+
+            // cast a "shadow ray" from the intersection point towards the light source
+            // if the ray hits an object in the scene before reaching the light source, the light source doesn't illuminate this point (the point is in the shadow of that object)
+            // origin is exactly the intersection point, moved a tiny bit along the normal
+            // he says it's so that the shadow point doesn't lie exactly on the object surface, but i'm not sure
+            let shadow_origin = if light_dir.dot(&intersect_info.first_intersect_dir) < 0.0 {
+                &intersect_info.first_intersect_point - &(&intersect_info.first_intersect_dir * 0.001)
+            } else {
+                &intersect_info.first_intersect_point + &(&intersect_info.first_intersect_dir * 0.001)
+            };
+
+            // TODO shouldn't this be -light_dir, since we're going the opposite way?
+            let shadow_intersect_info = scene_intersect(&shadow_origin, &light_dir, objs);
+
+            // point lies in shadow of some object with regard to this light, don't contribute any color from the light
+            if shadow_intersect_info.intersects_with_scene && (&shadow_intersect_info.first_intersect_point - &shadow_origin).magnitude() < distance_to_light {
+                return (val.0, val.1)
+            }
+
             // add contribution of this light source to this intersection point's diffuse intensity
             // light intensity is affected by how "head on" the surface is to the light source
             // e.g. if the normal of a plane is exactly parallel to the light ray, the plane will get the full force of that light and thus be brighter
@@ -89,12 +110,12 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
 
         // we need this monstrosity of refs because of how we implemented multiplication on vecs as taking refs
         // in hindsight, whoops.
-        &(&(&intersect_info.closest_material.color().clone()
-            * diffuse_light_intensity)
-            * intersect_info.closest_material.albedo()[0])
-            + &(&(&Vec3f::new3f(1.0, 1.0, 1.0)
-            * specular_light_intensity)
-            * intersect_info.closest_material.albedo()[1])
+        let diffuse_color = &(intersect_info.closest_material.color() * diffuse_light_intensity)
+            * intersect_info.closest_material.albedo()[0];
+        let specular_color = &(&Vec3f::new3f(1.0, 1.0, 1.0) * specular_light_intensity)
+            * intersect_info.closest_material.albedo()[1];
+
+        &diffuse_color + &specular_color
     }
 }
 
