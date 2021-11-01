@@ -187,6 +187,8 @@ fn write_buf_to_file(framebuffer: &[Vec3f], dimensions: &Vec2f, filename: &str) 
             // TODO gamma/color correction
             // this may be done by some magical process we don't know about; figure it out
             // whatever you do for this keep in mind we're looking to support other filetypes, which may have their own approach
+            // we do some math here to confine the rbg color value to the range [0, 255]
+            // basically multiply 255 by some value clamped to range [0, 1]
             let byte = (255f32 * geometry::max(0f32, geometry::min(1f32, px[channel]))) as u8;
             stream.write_all(&[byte]).unwrap_or_else(|err| { panic!("Failed to write pixel {:?} to file {} due to {}", px, filename, err) });
         }
@@ -212,21 +214,21 @@ fn write_buf_to_file(framebuffer: &[Vec3f], dimensions: &Vec2f, filename: &str) 
 fn main() {
     // TODO import materials/objects so we don't have to do these monstrosities
     // no need to do any fancy .obj or .mtl or PBR materials parsing; just a yaml for now is ok
-    let ivory: Material = Material::new(&Vec3f::new3f(0.4f32, 0.4f32, 0.3f32), &Vec2f::from(&[0.6, 0.3, 0.1]), 50.0);
-    let rubber: Material = Material::new(&Vec3f::new3f(0.3f32, 0.1f32, 0.1f32), &Vec2f::from(&[0.9, 0.1, 0.0]), 10.0);
+    let ivory = Material::new(&Vec3f::new3f(0.4, 0.4, 0.3), &Vec2f::from(&[0.6, 0.3, 0.1]), 50.0);
+    let rubber = Material::new(&Vec3f::new3f(0.3, 0.1, 0.1), &Vec2f::from(&[0.9, 0.1, 0.0]), 10.0);
     // mirror glass is slightly slightly green irl
-    let mirror: Material = Material::new(&Vec3f::new3f(0.9f32, 1.0f32, 0.9f32), &Vec2f::from(&[0.0, 10.0, 0.8]), 1425.0);
+    let mirror = Material::new(&Vec3f::new3f(0.9, 1.0, 0.9), &Vec2f::from(&[0.0, 1.0, 0.8]), 1425.0);
 
     let lights = [Light::new(&Vec3f::new3f(-20.0, 20.0, 20.0), 1.5),
         Light::new(&Vec3f::new3f(30.0, 50.0, -25.0), 1.8),
         Light::new(&Vec3f::new3f(30.0, 20.0, 30.0), 1.7)];
 
     let spheres = [
-        Box::new(Sphere::new(Vec3f::new3f(0f32, 0f32, -5f32), 1f32, &ivory)),
-        Box::new(Sphere::new(Vec3f::new3f(-3f32, 0f32, -16f32), 2f32, &ivory)),
-        Box::new(Sphere::new(Vec3f::new3f(-1f32, -1.5f32, -12f32), 2f32, &mirror)),
-        Box::new(Sphere::new(Vec3f::new3f(1.5f32, -0.5f32, -18f32), 3f32, &rubber)),
-        Box::new(Sphere::new(Vec3f::new3f(7f32, 5f32, -18f32), 4f32, &mirror))];
+        Box::new(Sphere::new(Vec3f::new3f(0.0, 0.0, -5.0), 1.0, &ivory)),
+        Box::new(Sphere::new(Vec3f::new3f(-3.0, 0.0, -16.0), 2.0, &ivory)),
+        Box::new(Sphere::new(Vec3f::new3f(-1.0, -1.5, -12.0), 2.0, &mirror)),
+        Box::new(Sphere::new(Vec3f::new3f(1.5, -0.5, -18.0), 3.0, &rubber)),
+        Box::new(Sphere::new(Vec3f::new3f(7.0, 5.0, -18.0), 4.0, &mirror))];
 
     // TODO render more than one frame
     // TODO support non-PPM files

@@ -2,6 +2,11 @@ use crate::geometry::Vec3f;
 
 pub struct Material {
     base_color: Vec3f,
+    // this is a misnomer
+    // each value of this vector is the proportion of light reflected off the material differently
+    // albedo[0] is the percentage of incident light which is reflected diffusely
+    // albedo[1] is the percentage of incident light which is reflected specular-ly
+    // albedo[3] is the percentage of incident light which is reflected the normal reflect way
     albedo: Vec3f,
     specular_exponent: f32,
 }
