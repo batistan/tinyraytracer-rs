@@ -1,5 +1,6 @@
 use crate::geometry::{Vec3f, Vec4f};
 
+#[derive(Debug)]
 pub struct Material {
     base_color: Vec3f,
     // this is a misnomer

@@ -12,6 +12,7 @@ pub trait Object {
     fn get_material(&self) -> &Material;
 }
 
+#[derive(Debug)]
 pub struct Sphere {
     center: Vec3f,
     radius: f32,

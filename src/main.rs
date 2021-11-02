@@ -18,6 +18,7 @@ static HEIGHT: u32 = 768;
 static FOV: f32 = std::f32::consts::PI / 3.0;
 static MAX_BOUNCES: u32 = 4;
 
+#[derive(Debug)]
 pub struct RayIntersectInfo {
     intersects_with_scene: bool,
     closest_material: Material,
@@ -44,11 +45,11 @@ impl RayIntersectInfo {
 fn scene_intersect<T>(orig: &Vec3f, dir: &Vec3f, objs: &[Box<T>]) -> RayIntersectInfo
     where T: Object {
     let mut distance = f32::MAX;
-    let closest_material: Material = Material::new(&Vec3f::new(3), &Vec3f::new(3), 0.0, 0.0);
+    let closest_material: Material = Material::new(&Vec3f::new(3), &Vec4f::from(&[1.0, 0.0, 0.0, 0.0]), 0.0, 1.0);
     let first_intersect_point = Vec3f::new(3);
     let first_intersect_dir = Vec3f::new(3);
 
-    RayIntersectInfo::from(objs.iter().fold((false, closest_material, first_intersect_point, first_intersect_dir), |prev, obj| {
+    let mut obj_intersect = RayIntersectInfo::from(objs.iter().fold((false, closest_material, first_intersect_point, first_intersect_dir), |prev, obj| {
         let (intersects, dist_i) = obj.ray_intersect(orig, dir);
         // objects closer to the camera will block further away ones
         return if intersects && dist_i < distance {
@@ -61,7 +62,34 @@ fn scene_intersect<T>(orig: &Vec3f, dir: &Vec3f, objs: &[Box<T>]) -> RayIntersec
         } else {
             prev
         };
-    }))
+    }));
+
+    let mut checker_board_distance = f32::MAX;
+
+    if dir[1].abs() > 0.0001 {
+        let d = -(orig[1] + 4.0) / dir[1]; // the checkerboard plane has equation y = -4
+        let pt = orig + &(dir * d);
+        if d > 0.0 && pt[0].abs() < 10.0 && pt[2] < -10.0 && pt[2] > -30.0 && d < distance {
+            checker_board_distance = d;
+            obj_intersect.first_intersect_point = pt.clone();
+            obj_intersect.first_intersect_normal = Vec3f::new3f(0.0, 1.0, 0.0);
+            obj_intersect.closest_material = if ((0.5 * pt[0] + 1000.0) as i32 + ((0.5 * pt[2]) as i32)) & 1 == 0 {
+                Material::new(&(&Vec3f::new3f(1.0, 1.0, 1.0) * 0.3),
+                              obj_intersect.closest_material.albedo(),
+                              obj_intersect.closest_material.specular_exponent(),
+                              obj_intersect.closest_material.refractive_index())
+            } else {
+                Material::new(&(&Vec3f::new3f(1.0, 0.7, 0.3) * 0.3),
+                              obj_intersect.closest_material.albedo(),
+                              obj_intersect.closest_material.specular_exponent(),
+                              obj_intersect.closest_material.refractive_index())
+            };
+        }
+    }
+
+    obj_intersect.intersects_with_scene = obj_intersect.intersects_with_scene || checker_board_distance < f32::MAX;
+
+    obj_intersect
 }
 
 // cast a ray into the scene from point orig, get back the color of that point on the canvas
