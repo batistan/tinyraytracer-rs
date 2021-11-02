@@ -4,7 +4,7 @@ mod object;
 mod light;
 
 use std::io::{BufWriter, Write};
-use crate::geometry::{Vec2f, Vec3f};
+use crate::geometry::{Vec2f, Vec3f, Vec4f};
 use crate::light::Light;
 use crate::material::Material;
 use crate::object::{Object, Sphere};
@@ -16,7 +16,7 @@ static HEIGHT: u32 = 768;
 // we could compute this from the viewport size and its distance to the camera
 // but this way we don't have to
 static FOV: f32 = std::f32::consts::PI / 3.0;
-static MAX_REFLECT_BOUNCES: u32 = 4;
+static MAX_BOUNCES: u32 = 4;
 
 pub struct RayIntersectInfo {
     intersects_with_scene: bool,
@@ -44,7 +44,7 @@ impl RayIntersectInfo {
 fn scene_intersect<T>(orig: &Vec3f, dir: &Vec3f, objs: &[Box<T>]) -> RayIntersectInfo
     where T: Object {
     let mut distance = f32::MAX;
-    let closest_material: Material = Material::new(&Vec3f::new(3), &Vec3f::new(3), 0.0);
+    let closest_material: Material = Material::new(&Vec3f::new(3), &Vec3f::new(3), 0.0, 0.0);
     let first_intersect_point = Vec3f::new(3);
     let first_intersect_dir = Vec3f::new(3);
 
@@ -76,7 +76,7 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
     where T: Object {
     let intersect_info = scene_intersect(orig, dir, objs);
 
-    if !intersect_info.intersects_with_scene || depth > MAX_REFLECT_BOUNCES {
+    if !intersect_info.intersects_with_scene || depth > MAX_BOUNCES {
         Vec3f::from(&BG_COLOR)
     } else {
         // reflections
@@ -88,13 +88,17 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
         // origin is exactly the intersection point, moved a tiny bit along the normal
         // he says it's so that the reflection point doesn't lie exactly on the object surface, but i'm not sure
         let reflect_dir = geometry::reflect(dir, &intersect_info.first_intersect_normal);
-        let reflect_origin = if reflect_dir.dot(&intersect_info.first_intersect_normal) < 0.0 {
-            &intersect_info.first_intersect_point - &(&intersect_info.first_intersect_normal * 0.001)
-        } else {
-            &intersect_info.first_intersect_point + &(&intersect_info.first_intersect_normal * 0.001)
-        };
-
+        let reflect_origin = shift_point_along_normal(&reflect_dir, &intersect_info.first_intersect_normal, &intersect_info.first_intersect_point);
         let reflect_color = &cast_ray(&reflect_origin, &reflect_dir, lights, objs, depth + 1) * intersect_info.closest_material.albedo()[2];
+
+        // save some computation on materials that don't refract
+        let refract_color = if intersect_info.closest_material.refractive_index() != 1.0 {
+            let refract_dir = geometry::refract(dir, &intersect_info.first_intersect_normal, intersect_info.closest_material.refractive_index());
+            let refract_origin = shift_point_along_normal(&refract_dir, &intersect_info.first_intersect_normal, &intersect_info.first_intersect_point);
+            &cast_ray(&refract_origin, &refract_dir, lights, objs, depth + 1) * intersect_info.closest_material.albedo()[3]
+        } else {
+            Vec3f::zero()
+        };
 
         let (diffuse_light_intensity, specular_light_intensity) = lights.iter().fold((0.0, 0.0), |val, light| {
             let light_vec = light.get_position() - &intersect_info.first_intersect_point;
@@ -105,11 +109,7 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
 
             // cast a "shadow ray" from the intersection point towards the light source
             // if the ray hits an object in the scene before reaching the light source, the light source doesn't illuminate this point (the point is in the shadow of that object)
-            let shadow_origin = if light_dir.dot(&intersect_info.first_intersect_normal) < 0.0 {
-                &intersect_info.first_intersect_point - &(&intersect_info.first_intersect_normal * 0.001)
-            } else {
-                &intersect_info.first_intersect_point + &(&intersect_info.first_intersect_normal * 0.001)
-            };
+            let shadow_origin = shift_point_along_normal(&light_dir, &intersect_info.first_intersect_normal, &intersect_info.first_intersect_point);
 
             // TODO shouldn't this be -light_dir, since we're going the opposite way?
             let shadow_intersect_info = scene_intersect(&shadow_origin, &light_dir, objs);
@@ -138,7 +138,15 @@ fn cast_ray<T>(orig: &Vec3f, dir: &Vec3f, lights: &[Light], objs: &[Box<T>], dep
         let specular_color = &(&Vec3f::new3f(1.0, 1.0, 1.0) * specular_light_intensity)
             * intersect_info.closest_material.albedo()[1];
 
-        &(&diffuse_color + &specular_color) + &reflect_color
+        &(&(&diffuse_color + &specular_color) + &reflect_color) + &refract_color
+    }
+}
+
+fn shift_point_along_normal(dir: &Vec3f, normal: &Vec3f, point: &Vec3f) -> Vec3f {
+    if dir.dot(normal) < 0.0 {
+        point - &(normal * 0.001)
+    } else {
+        point + &(normal * 0.001)
     }
 }
 
@@ -214,19 +222,20 @@ fn write_buf_to_file(framebuffer: &[Vec3f], dimensions: &Vec2f, filename: &str) 
 fn main() {
     // TODO import materials/objects so we don't have to do these monstrosities
     // no need to do any fancy .obj or .mtl or PBR materials parsing; just a yaml for now is ok
-    let ivory = Material::new(&Vec3f::new3f(0.4, 0.4, 0.3), &Vec2f::from(&[0.6, 0.3, 0.1]), 50.0);
-    let rubber = Material::new(&Vec3f::new3f(0.3, 0.1, 0.1), &Vec2f::from(&[0.9, 0.1, 0.0]), 10.0);
+    let ivory = Material::new(&Vec3f::new3f(0.4, 0.4, 0.3), &Vec4f::from(&[0.6, 0.3, 0.1, 0.0]), 50.0, 1.0);
+    let glass = Material::new(&Vec3f::new3f(0.6, 0.7, 0.8), &Vec4f::from(&[0.0, 0.5, 0.1, 0.8]), 125.0, 1.5);
+    let rubber = Material::new(&Vec3f::new3f(0.3, 0.1, 0.1), &Vec4f::from(&[0.9, 0.1, 0.0, 0.0]), 10.0, 1.0);
     // mirror glass is slightly slightly green irl
-    let mirror = Material::new(&Vec3f::new3f(0.9, 1.0, 0.9), &Vec2f::from(&[0.0, 1.0, 0.8]), 1425.0);
+    let mirror = Material::new(&Vec3f::new3f(0.9, 1.0, 0.9), &Vec4f::from(&[0.0, 1.0, 0.8, 0.0]), 1425.0, 1.0);
 
     let lights = [Light::new(&Vec3f::new3f(-20.0, 20.0, 20.0), 1.5),
         Light::new(&Vec3f::new3f(30.0, 50.0, -25.0), 1.8),
         Light::new(&Vec3f::new3f(30.0, 20.0, 30.0), 1.7)];
 
     let spheres = [
-        Box::new(Sphere::new(Vec3f::new3f(0.0, 0.0, -5.0), 1.0, &ivory)),
+        //Box::new(Sphere::new(Vec3f::new3f(0.0, 0.0, -5.0), 1.0, &ivory)),
         Box::new(Sphere::new(Vec3f::new3f(-3.0, 0.0, -16.0), 2.0, &ivory)),
-        Box::new(Sphere::new(Vec3f::new3f(-1.0, -1.5, -12.0), 2.0, &mirror)),
+        Box::new(Sphere::new(Vec3f::new3f(-1.0, -1.5, -12.0), 2.0, &glass)),
         Box::new(Sphere::new(Vec3f::new3f(1.5, -0.5, -18.0), 3.0, &rubber)),
         Box::new(Sphere::new(Vec3f::new3f(7.0, 5.0, -18.0), 4.0, &mirror))];
 

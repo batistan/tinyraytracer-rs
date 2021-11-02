@@ -20,7 +20,7 @@ pub struct Sphere {
 
 impl Sphere {
     pub fn new(c: Vec3f, r: f32, material: &Material) -> Self {
-        Sphere { center: c, radius: r, material: Material::new(material.color(), material.albedo(), material.specular_exponent()) }
+        Sphere { center: c, radius: r, material: material.clone() }
     }
 }
 
