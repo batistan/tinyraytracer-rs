@@ -64,6 +64,7 @@ fn scene_intersect<T>(orig: &Vec3f, dir: &Vec3f, objs: &[Box<T>]) -> RayIntersec
         };
     }));
 
+    // TODO checkerboard as a plane instead of this
     let mut checker_board_distance = f32::MAX;
 
     if dir[1].abs() > 0.0001 {
